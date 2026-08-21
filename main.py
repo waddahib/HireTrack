@@ -1,13 +1,18 @@
 from fastapi import Depends, FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, EmailStr
 from sqlalchemy.orm import Session
 
+from auth import hash_password
 from database import get_db
-from models import Application
+from models import Application, User
 
 
 app = FastAPI()
 
+
+# -------------------------
+# Pydantic Models
+# -------------------------
 
 class JobApplicationCreate(BaseModel):
     company: str
@@ -18,10 +23,65 @@ class JobApplicationCreate(BaseModel):
     notes: str | None = None
 
 
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# -------------------------
+# Home
+# -------------------------
+
 @app.get("/")
 def home():
     return {"message": "HireTrack API is running"}
 
+
+# -------------------------
+# User Registration
+# -------------------------
+
+@app.post("/register", response_model=UserResponse, status_code=201)
+def register_user(
+    user: UserCreate,
+    db: Session = Depends(get_db)
+):
+    email = user.email.lower()
+
+    existing_user = (
+        db.query(User)
+        .filter(User.email == email)
+        .first()
+    )
+
+    if existing_user is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+
+    new_user = User(
+        email=email,
+        hashed_password=hash_password(user.password)
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
+
+
+# -------------------------
+# Create Application
+# -------------------------
 
 @app.post("/applications")
 def create_application(
@@ -42,10 +102,24 @@ def create_application(
     }
 
 
-@app.get("/applications")
-def get_applications(db: Session = Depends(get_db)):
-    return db.query(Application).order_by(Application.id).all()
+# -------------------------
+# Get All Applications
+# -------------------------
 
+@app.get("/applications")
+def get_applications(
+    db: Session = Depends(get_db)
+):
+    return (
+        db.query(Application)
+        .order_by(Application.id)
+        .all()
+    )
+
+
+# -------------------------
+# Get One Application
+# -------------------------
 
 @app.get("/applications/{application_id}")
 def get_application(
@@ -66,6 +140,10 @@ def get_application(
 
     return application
 
+
+# -------------------------
+# Update Application
+# -------------------------
 
 @app.put("/applications/{application_id}")
 def update_application(
@@ -96,6 +174,10 @@ def update_application(
         "application": application
     }
 
+
+# -------------------------
+# Delete Application
+# -------------------------
 
 @app.delete("/applications/{application_id}")
 def delete_application(
