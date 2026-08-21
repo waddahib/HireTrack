@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text
-
+from sqlalchemy import Column, ForeignKey, Integer, String, Text
 from database import Base
 
 
@@ -13,7 +12,7 @@ class Application(Base):
     location = Column(String(255), nullable=True)
     job_url = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
-
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 class User(Base):
     __tablename__ = "users"

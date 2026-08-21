@@ -203,10 +203,12 @@ def login_user(
 @app.post("/applications")
 def create_application(
     application: JobApplicationCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     new_application = Application(
-        **application.model_dump()
+        **application.model_dump(),
+        user_id=current_user.id
     )
 
     db.add(new_application)
@@ -231,6 +233,7 @@ def get_applications(
 ):
     return (
         db.query(Application)
+        .filter(Application.user_id == current_user.id)
         .order_by(Application.id)
         .all()
     )
@@ -243,11 +246,15 @@ def get_applications(
 @app.get("/applications/{application_id}")
 def get_application(
     application_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     application = (
         db.query(Application)
-        .filter(Application.id == application_id)
+        .filter(
+            Application.id == application_id,
+            Application.user_id == current_user.id
+        )
         .first()
     )
 
@@ -268,11 +275,15 @@ def get_application(
 def update_application(
     application_id: int,
     updated_application: JobApplicationCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     application = (
         db.query(Application)
-        .filter(Application.id == application_id)
+        .filter(
+            Application.id == application_id,
+            Application.user_id == current_user.id
+        )
         .first()
     )
 
@@ -301,11 +312,15 @@ def update_application(
 @app.delete("/applications/{application_id}")
 def delete_application(
     application_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     application = (
         db.query(Application)
-        .filter(Application.id == application_id)
+        .filter(
+            Application.id == application_id,
+            Application.user_id == current_user.id
+        )
         .first()
     )
 
