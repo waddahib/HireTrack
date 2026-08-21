@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -54,7 +54,9 @@ def get_application(application_id: int):
         if application.id == application_id:
             return application
 
-    return {"error": "Application not found"}
+    raise HTTPException(
+    status_code=404,
+    detail="Application not found")
 
 @app.delete("/applications/{application_id}")
 def delete_application(application_id: int):
@@ -67,7 +69,9 @@ def delete_application(application_id: int):
                 "application": deleted_application
             }
 
-    return {"error": "Application not found"}
+    raise HTTPException(
+    status_code=404,
+    detail="Application not found")
 
 @app.put("/applications/{application_id}")
 def update_application(application_id: int, updated_application: JobApplicationCreate):
@@ -85,4 +89,6 @@ def update_application(application_id: int, updated_application: JobApplicationC
                 "application": new_application
             }
 
-    return {"error": "Application not found"}
+    raise HTTPException(
+    status_code=404,
+    detail="Application not found")
