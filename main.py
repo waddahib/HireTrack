@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, EmailStr
 from sqlalchemy.orm import Session
 
-from auth import hash_password
+from auth import create_access_token, hash_password, verify_password
 from database import get_db
 from models import Application, User
 
@@ -33,6 +33,16 @@ class UserResponse(BaseModel):
     email: EmailStr
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
 
 
 # -------------------------
@@ -77,6 +87,50 @@ def register_user(
     db.refresh(new_user)
 
     return new_user
+
+
+# -------------------------
+# User Login
+# -------------------------
+
+@app.post("/login", response_model=TokenResponse)
+def login_user(
+    login: LoginRequest,
+    db: Session = Depends(get_db)
+):
+    email = login.email.lower()
+
+    user = (
+        db.query(User)
+        .filter(User.email == email)
+        .first()
+    )
+
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+
+    password_is_correct = verify_password(
+        login.password,
+        user.hashed_password
+    )
+
+    if not password_is_correct:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+
+    access_token = create_access_token(
+        {"sub": str(user.id)}
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 
 # -------------------------
